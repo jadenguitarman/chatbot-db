@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>A customer service window</title>
+    <link rel="stylesheet" href="/styles/index.css" />
+  </head>
+
+  <body>
+    <main>
+      <h1>Welcome to AllTheThings!</h1>
+      <p>This is an ecommerce site with a huge product inventory and infrastructure, similar to Amazon. See how the AI Support Agent can help you with your order in the chat window!</p>
+      <span>Design inspired by <a href="https://codepen.io/shivapandey/pen/dWdRYM">this CodePen</a></span>
+    </main>
+
+    <div id="chat">
+      <div id="chat-circle">
+        <svg viewBox="0 0 512 512">
+          <path d="M332.8 25.6H51.2C22.921 25.6 0 48.52 0 76.8v153.6c0 28.279 22.921 51.2 51.2 51.2h25.6v76.8l89.6-76.8h166.4c28.279 0 51.2-22.921 51.2-51.2V76.8c0-28.28-22.921-51.2-51.2-51.2zm25.6 204.8c0 14.114-11.486 25.6-25.6 25.6H156.928l-7.185 6.161-47.343 40.576V256H51.2c-14.114 0-25.6-11.486-25.6-25.6V76.8c0-14.114 11.486-25.6 25.6-25.6h281.6c14.114 0 25.6 11.486 25.6 25.6v153.6z"/>
+          <path d="M460.8 153.6h-51.2v25.6h51.2c14.114 0 25.6 11.486 25.6 25.6v153.6c0 14.114-11.486 25.6-25.6 25.6h-51.2v46.737l-47.343-40.576-7.185-6.161H179.2c-14.114 0-25.6-11.486-25.6-25.6v-32.111L128 348.228V358.4c0 28.279 22.921 51.2 51.2 51.2h166.4l89.6 76.8v-76.8h25.6c28.279 0 51.2-22.921 51.2-51.2V204.8c0-28.279-22.921-51.2-51.2-51.2z"/>
+        </svg>
+      </div>
+
+      <div id="chat-background-overlay"></div>
+
+      <div id="chat-box" class="hidden">
+        <header>
+          <span>AI Support Agent</span>
+          <span id="chat-box-close">&times;</span>
+        </header>
+
+        <main></main>
+
+        <div id="chat-input">
+          <input type="text" placeholder="Send a message..."/>
+          <svg viewBox="0 0 495.003 495.003" id="chat-submit">
+            <path d="M164.711 456.687a8.007 8.007 0 0 0 4.266 7.072 7.992 7.992 0 0 0 8.245-.468l55.09-37.616-67.6-32.22v63.232zM492.431 32.443a8.024 8.024 0 0 0-5.44-2.125 7.89 7.89 0 0 0-3.5.816L7.905 264.422a14.154 14.154 0 0 0 .153 25.472L133.4 349.618l250.62-205.99-219.565 220.786 156.145 74.4a14.115 14.115 0 0 0 6.084 1.376c1.768 0 3.519-.322 5.186-.977a14.188 14.188 0 0 0 7.97-7.956l154.596-390a7.968 7.968 0 0 0-2.005-8.814z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const chatContainer = document.getElementById("chat");
+      const conversationWindow = document.querySelector("#chat-box > main");
+      const chatSubmit = document.getElementById("chat-submit");
+      const messageInput = document.querySelector("#chat-input > input");
+
+      [
+        "chat-circle",
+        "chat-box-close",
+        "chat-background-overlay"
+      ].forEach(id => {
+        document.getElementById(id).addEventListener("click", () => {
+          chatContainer.classList.toggle("open");
+        });
+      });
+
+      const getUserImage = async () => {
+        return (
+          await (
+            await fetch(
+              "/get-user-image", 
+              {
+                method: "POST"
+              }
+            )
+          ).json()
+        ).imageURL;
+      }
+
+      const displayMessage = async (source, content) => {
+        conversationWindow.innerHTML += `
+          <div class="message" data-source="${ source }">
+            <img src="${ source == "operator" ? "/operator.webp" : (await getUserImage()) }">
+            <div>
+              ${ content }
+            </div>
+          </div>
+        `;
+
+        conversationWindow.scrollTo(0, conversationWindow.scrollHeight);
+      }
+
+      const sendUserMessage = async () => {
+        const message = messageInput.value;
+        messageInput.value = "";
+        await displayMessage("user", message);
+
+        const response = (
+          await (
+            await fetch(
+              "/send-chat-message", 
+              {
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                method: "POST",
+                body: JSON.stringify({ content: message })
+              }
+            )
+          ).json()
+        ).response;
+        if (!!response) await displayMessage("operator", response);
+      };
+
+      chatSubmit.addEventListener("click", sendUserMessage);
+      messageInput.addEventListener("keyup", ({key}) => {
+        if (key === "Enter") sendUserMessage();
+      });
+    </script>
+  </body>
+</html>
